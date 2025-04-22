@@ -1,0 +1,62 @@
+import pandas as pd
+df_2004 = pd.read_stata("Individual_t104.dta")
+df_2024 = pd.read_excel("usu_individual_T124.xlsx")
+print(df_2004.head())
+print(df_2024.head())
+#punto 2a
+df_2004_gba = df_2004[df_2004["region"] == "Gran Buenos Aires"]
+df_2024_gba = df_2024[df_2024["REGION"] == "Gran Buenos Aires"]
+
+df_a = pd.read_stata("Individual_t104.dta") 
+print(df_a.shape)
+df_b = pd.read_excel("usu_individual_T124.xlsx") 
+print(df_b.shape)
+df_a_gba = df_a[df_a["region"] == "Gran Buenos Aires"]
+df_b_gba = df_b[df_b["REGION"] == "Gran Buenos Aires"]
+df = pd.concat([df_a_gba, df_b_gba])  
+print(df.shape)
+
+#punto 2b
+variables_2004=['CODUSU', 'nro_hogar', 'componente', 'h15', 'ano4', 'deccfr',
+ 'ideccfr', 'rdeccfr', 'gdeccfr', 'pdeccfr', 'adeccfr', 'pj1_1', 'pj2_1', 'pj3_1', 'idimpp']
+variables_2024= ['GDECCFR' , 'PDECCFR','CODUSU', 'ANO4', 'TRIMESTRE', 'NRO_HOGAR', 'COMPONENTE', 
+                 'H15', 'REGION', 'MAS_500', 'AGLOMERADO', 'PONDERA', 'CH03', 'CH04', 'CH05']
+faltantes_2004=df_a[variables_2004].isna().sum()
+faltantes_2024=df_b[variables_2024].isna().sum()
+
+print("valores faltantes - año 2004")
+print(faltantes_2004)
+print("valores faltantes - año 2024")
+print(faltantes_2024)
+
+#punto 2c
+valores_invalidos = [9, 99, 999, 99999, -7, -8, -9, 0] 
+import numpy as np
+for var in variables_2024:
+    df[var] = df[var].replace(valores_invalidos, np.nan)
+faltantes_limpios = df[variables_2024].isna().sum()
+print("Valores faltantes después de limpieza(2024):")
+print(faltantes_limpios)
+for var in variables_2004:
+    df[var] = df[var].replace(valores_invalidos, np.nan)
+faltantes_limpios = df[variables_2004].isna().sum()
+print("Valores faltantes después de limpieza(2004):")
+print(faltantes_limpios)
+
+#punto 3
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+df_2004 = df_a.copy()
+df_2024 = df_b.copy()
+df_2004['Sexo'] = df_2004['ch04'].replace({1: 'Varón', 2: 'Mujer'})
+df_2024['Sexo'] = df_2024['CH04'].replace({1: 'Varón', 2: 'Mujer'})
+df_2004['Año'] = 2004
+df_2024['Año'] = 2024
+df_union = pd.concat([df_2004[['Sexo', 'Año']], df_2024[['Sexo', 'Año']]])
+sns.set(style="whitegrid")
+sns.histplot(data=df_union, x='Sexo', hue='Año', multiple='dodge', shrink=0.8, discrete=True)
+plt.title("Composición por Sexo  (2004 vs 2024)")
+plt.xlabel("Sexo")
+plt.ylabel("Cantidad de personas")
+plt.show()
