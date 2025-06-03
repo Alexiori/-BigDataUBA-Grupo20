@@ -1321,3 +1321,254 @@
  "nbformat": 4,
  "nbformat_minor": 5
 }
+C. Métodos de Clasificación y Performance
+
+5- Logit
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import confusion_matrix, accuracy_score, roc_auc_score, roc_curve
+from sklearn.model_selection import train_test_split
+
+# -----------------------------
+# Cargar las 2 bases y preparar df_final
+# -----------------------------
+import os
+
+     
+
+from google.colab import files
+uploaded = files.upload()
+     
+Upload widget is only available when the cell has been executed in the current browser session. Please rerun this cell to enable.
+Saving Individual_t104.dta to Individual_t104 (2).dta
+Saving usu_individual_T124.xlsx to usu_individual_T124 (1).xlsx
+
+df_2004 = pd.read_stata("Individual_t104 (2).dta")
+df_2024 = pd.read_excel("usu_individual_T124 (1).xlsx")
+df_2004.columns = df_2004.columns.str.upper()
+df_2024.columns = df_2024.columns.str.upper()
+df_2004["AÑO"] = 2004
+df_2024["AÑO"] = 2024
+cols_comunes = list(set(df_2004.columns) & set(df_2024.columns))
+df_final = pd.concat([df_2004[cols_comunes], df_2024[cols_comunes]], ignore_index=True)
+
+     
+
+
+df_respondieron = df_final[df_final["P21"].notna()].copy()
+df_respondieron["DESOCUPADO"] = (df_respondieron["ESTADO"] == 4).astype(int)
+df_respondieron["MUJER"] = (df_respondieron["CH04"] == 2).astype(int)
+df_respondieron["EDAD"] = pd.to_numeric(df_respondieron["CH06"], errors="coerce")
+df_respondieron["EDAD2"] = df_respondieron["EDAD"] ** 2
+df_respondieron["EDUC"] = pd.to_numeric(df_respondieron["CH14"], errors="coerce")
+df_respondieron["H15"] = pd.to_numeric(df_respondieron["H15"], errors="coerce")
+df_respondieron["PP02I"] = pd.to_numeric(df_respondieron["PP02I"], errors="coerce")
+
+X = df_respondieron[["EDAD", "EDAD2", "EDUC", "MUJER", "H15", "PP02I"]].dropna()
+y = df_respondieron.loc[X.index, "DESOCUPADO"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=444)
+
+    
+
+# Modelo LOGIT
+logit_model = LogisticRegression()
+logit_model.fit(X_train, y_train)
+y_pred_logit = logit_model.predict(X_test)
+y_prob_logit = logit_model.predict_proba(X_test)[:, 1]
+
+cm_logit = confusion_matrix(y_test, y_pred_logit)
+acc_logit = accuracy_score(y_test, y_pred_logit)
+auc_logit = roc_auc_score(y_test, y_prob_logit)
+
+print("\n LOGIT")
+print("Matriz de confusión:")
+print(cm_logit)
+print(f"Accuracy: {acc_logit:.3f} | AUC: {auc_logit:.3f}")
+     
+ LOGIT
+Matriz de confusión:
+[[6976    5]
+ [ 585  626]]
+Accuracy: 0.928 | AUC: 0.955
+
+# Modelo KNN
+knn_model = KNeighborsClassifier(n_neighbors=5)
+knn_model.fit(X_train, y_train)
+y_pred_knn = knn_model.predict(X_test)
+y_prob_knn = knn_model.predict_proba(X_test)[:, 1]
+
+cm_knn = confusion_matrix(y_test, y_pred_knn)
+acc_knn = accuracy_score(y_test, y_pred_knn)
+auc_knn = roc_auc_score(y_test, y_prob_knn)
+
+print("\n KNN (k=5)")
+print("Matriz de confusión:")
+print(cm_knn)
+print(f"Accuracy: {acc_knn:.3f} | AUC: {auc_knn:.3f}")
+
+
+     
+ KNN (k=5)
+Matriz de confusión:
+[[6701  280]
+ [ 454  757]]
+Accuracy: 0.910 | AUC: 0.947
+
+# Curvas ROC
+fpr_logit, tpr_logit, _ = roc_curve(y_test, y_prob_logit)
+fpr_knn, tpr_knn, _ = roc_curve(y_test, y_prob_knn)
+
+plt.figure(figsize=(8, 6))
+plt.plot(fpr_logit, tpr_logit, label=f"Logit (AUC={auc_logit:.2f})", color='blue')
+plt.plot(fpr_knn, tpr_knn, label=f"KNN (AUC={auc_knn:.2f})", color='green')
+plt.plot([0, 1], [0, 1], 'k--', label="Aleatorio")
+plt.xlabel("Tasa de Falsos Positivos")
+plt.ylabel("Tasa de Verdaderos Positivos")
+plt.title("Curvas ROC")
+plt.legend()
+plt.grid(True)
+plt.show()
+     
+
+Punto 6
+
+
+df_norespondieron = df_final[df_final["P21"].isna()].copy()
+df_norespondieron["MUJER"] = (df_norespondieron["CH04"] == 2).astype(int)
+df_norespondieron["EDAD"] = pd.to_numeric(df_norespondieron["CH06"], errors="coerce")
+df_norespondieron["EDAD2"] = df_norespondieron["EDAD"]**2
+df_norespondieron["EDUC"] = pd.to_numeric(df_norespondieron["CH14"], errors="coerce")
+df_norespondieron["H15"] = pd.to_numeric(df_norespondieron["H15"], errors="coerce")
+df_norespondieron["PP02I"] = pd.to_numeric(df_norespondieron["PP02I"], errors="coerce")
+
+X_noresp = df_norespondieron[["EDAD", "EDAD2", "EDUC", "MUJER", "H15", "PP02I"]].dropna()
+     
+
+# Uso el modelo LOGIT
+     
+
+# Paso 1: Extraer las columnas necesarias
+X_noresp = df_norespondieron[["EDAD", "EDAD2", "EDUC", "MUJER", "H15", "PP02I"]]
+     
+
+# Paso 2: Mostrar cuántas filas hay antes de imputar
+print("Antes de imputar - filas con datos:", X_noresp.dropna().shape[0])
+print("Total de filas:", X_noresp.shape[0])
+
+     
+Antes de imputar - filas con datos: 0
+Total de filas: 0
+
+# Paso 3: Imputar faltantes si es necesario
+X_noresp = X_noresp.fillna(X_train.mean())
+
+     
+
+# Paso 4: Verificar que haya datos antes de predecir
+if X_noresp.shape[0] > 0:
+    pred_noresp = logit_model.predict(X_noresp)
+    prop_desocupados = np.mean(pred_noresp)
+    print("\n Punto 6")
+    print(f"Proporción de desocupados predichos en no respondieron: {prop_desocupados:.3f}")
+else:
+    print(" No hay datos válidos para predecir.")
+     
+No hay datos válidos para predecir.
+
+print("Columnas disponibles en df_final:", df_final.columns)
+print("Cantidad de filas con P21 nulo:", df_final["P21"].isna().sum())
+     
+Columnas disponibles en df_final: Index(['PONDERA', 'PP06E', 'V12_M', 'DECOCUR', 'CAT_INAC', 'NRO_HOGAR',
+       'PP07G3', 'PP08F2', 'PP05B2_MES', 'H15',
+       ...
+       'PP02E', 'PP05B2_DIA', 'PP04A', 'PP10E', 'PP02C4', 'PP11L', 'IDECCFR',
+       'PP07F5', 'PP03H', 'PP07D'],
+      dtype='object', length=173)
+Cantidad de filas con P21 nulo: 0
+
+df_final = pd.concat([df_2004, df_2024])
+df_norespondieron = df_final[df_final["P21"].isna()].copy()
+print("Filas no respondieron:", df_norespondieron.shape[0])
+     
+Filas no respondieron: 0
+
+# 1. Revisamos cuántas filas hay en df_norespondieron
+print("Total no respondieron:", df_norespondieron.shape[0])
+
+# 2. Revisamos cuántos valores nulos tiene cada columna
+print("\nValores nulos por variable:")
+print(df_norespondieron[["CH06", "CH14", "CH04", "H15", "PP02I"]].isna().sum())
+
+# 3. Revisamos los valores únicos para ver si hay strings raros
+print("\nValores únicos en H15:", df_norespondieron["H15"].unique())
+print("Valores únicos en PP02I:", df_norespondieron["PP02I"].unique())
+
+     
+Total no respondieron: 0
+
+Valores nulos por variable:
+CH06     0
+CH14     0
+CH04     0
+H15      0
+PP02I    0
+dtype: int64
+
+Valores únicos en H15: []
+Valores únicos en PP02I: []
+
+
+     
+
+pred_noresp = logit_model.predict(X_noresp)
+
+     
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-84-ea3bbd5064bc> in <cell line: 0>()
+----> 1 pred_noresp = logit_model.predict(X_noresp)
+
+/usr/local/lib/python3.11/dist-packages/sklearn/linear_model/_base.py in predict(self, X)
+    372         """
+    373         xp, _ = get_namespace(X)
+--> 374         scores = self.decision_function(X)
+    375         if len(scores.shape) == 1:
+    376             indices = xp.astype(scores > 0, indexing_dtype(xp))
+
+/usr/local/lib/python3.11/dist-packages/sklearn/linear_model/_base.py in decision_function(self, X)
+    349         xp, _ = get_namespace(X)
+    350 
+--> 351         X = validate_data(self, X, accept_sparse="csr", reset=False)
+    352         scores = safe_sparse_dot(X, self.coef_.T, dense_output=True) + self.intercept_
+    353         return (
+
+/usr/local/lib/python3.11/dist-packages/sklearn/utils/validation.py in validate_data(_estimator, X, y, reset, validate_separately, skip_check_array, **check_params)
+   2942             out = X, y
+   2943     elif not no_val_X and no_val_y:
+-> 2944         out = check_array(X, input_name="X", **check_params)
+   2945     elif no_val_X and not no_val_y:
+   2946         out = _check_y(y, **check_params)
+
+/usr/local/lib/python3.11/dist-packages/sklearn/utils/validation.py in check_array(array, accept_sparse, accept_large_sparse, dtype, order, copy, force_writeable, force_all_finite, ensure_all_finite, ensure_non_negative, ensure_2d, allow_nd, ensure_min_samples, ensure_min_features, estimator, input_name)
+   1128         n_samples = _num_samples(array)
+   1129         if n_samples < ensure_min_samples:
+-> 1130             raise ValueError(
+   1131                 "Found array with %d sample(s) (shape=%s) while a"
+   1132                 " minimum of %d is required%s."
+
+ValueError: Found array with 0 sample(s) (shape=(0, 6)) while a minimum of 1 is required by LogisticRegression.
+
+pred_noresp = logit_model.predict(X_noresp)
+prop_desocupados = np.mean(pred_noresp)
+
+print("\n Punto 6")
+print(f"Proporción de desocupados predichos en no respondieron: {prop_desocupados:.3f}")
+
+     
